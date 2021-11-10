@@ -1,0 +1,178 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.emergentes.controlador;
+
+import com.emergentes.modelo.Evento;
+import com.emergentes.utiles.Conexion;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import javax.servlet.annotation.WebServlet;
+
+/**
+ *
+ * @author Windows 8.1
+ */
+@WebServlet(name = "MainController", urlPatterns = {"/MainController"})
+public class MainController extends HttpServlet {
+
+    
+
+    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
+    /**
+     * Handles the HTTP <code>GET</code> method.
+     *
+     * @param request servlet request
+     * @param response servlet response
+     * @throws ServletException if a servlet-specific error occurs
+     * @throws IOException if an I/O error occurs
+     */
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        try {
+            String op;
+            op = (request.getParameter("op") != null) ? request.getParameter("op"):"evento";
+            ArrayList<Evento> evento = new ArrayList<Evento>();
+            Conexion canal = new Conexion();
+            canal.crearConexion();
+            Connection conn = canal.getConexion();
+            PreparedStatement ps;
+            ResultSet rs;
+            if (op.equals("list")){
+                // Para listar los datos
+                String sql = "select * from seminarios;";
+                // Consulta de selección y almacenarlo en una colección
+                ps = conn.prepareStatement(sql);
+                rs = ps.executeQuery();
+                while(rs.next()){
+                    Evento eventos = new Evento();
+                    eventos.setId(rs.getInt("id"));
+                    eventos.setExpositor(rs.getString("expositor"));
+                    eventos.setTitulo(rs.getString("titulo"));
+                    eventos.setFecha(rs.getString("fecha"));
+                    eventos.setHoras(rs.getString("hora"));
+                    eventos.setCupos(rs.getInt("cupo"));
+                    evento.add(eventos);
+                }
+                request.setAttribute("evento", evento);
+                // Enviar al index.jsp para mostrar la informacion
+                request.getRequestDispatcher("index.jsp").forward(request, response);
+            }
+            if (op.equals("nuevo")){
+                // Instanciar un objeto de la clase Libro
+                Evento eventos = new Evento();
+                System.out.println(eventos.toString());
+                
+                // El objeto se pone como atributo de request
+                request.setAttribute("evento", eventos);
+                // Redireccionar a editar.jsp
+                request.getRequestDispatcher("editar.jsp").forward(request, response);
+            }
+            if (op.equals("eliminar")){
+                // Obtener el id
+                int id = Integer.parseInt(request.getParameter("id"));
+                // Realizar la eliminación en la base de datos
+                String sql = "delete from seminarios where id = ?;";
+                ps = conn.prepareStatement(sql);
+                ps.setInt(1, id);
+                ps.executeUpdate();
+                // Redireccionar a MainController
+                response.sendRedirect("MainController");
+            }
+        } catch (SQLException ex) {
+            System.out.println("ERROR AL CONECTAR "+ex.getMessage());
+        }
+    }
+
+    /**
+     * Handles the HTTP <code>POST</code> method.
+     *
+     * @param request servlet request
+     * @param response servlet response
+     * @throws ServletException if a servlet-specific error occurs
+     * @throws IOException if an I/O error occurs
+     */
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        try {
+            int id = Integer.parseInt(request.getParameter("id"));
+            System.out.println("Valor de ID " + id);
+            String expositor = request.getParameter("expositor");
+            String titulo = request.getParameter("titulo");
+            String fecha = request.getParameter("fecha");
+            String horas = request.getParameter("horas");
+            int cupos = Integer.parseInt(request.getParameter("cupos"));
+            
+            Evento evento =  new Evento();
+            evento.setId(id);
+            evento.setExpositor(expositor);
+            evento.setTitulo(titulo);
+            evento.setFecha(fecha);
+            evento.setHoras(horas);
+            evento.setCupos(cupos);
+            
+            Conexion canal = new Conexion();
+            canal.crearConexion();
+            Connection conn = canal.getConexion();
+            PreparedStatement ps;
+            ResultSet rs;
+            
+            if (id == 0){
+                // Nuevo registro
+                String sql = "INSERT INTO seminarios(id, titulo, expositor, fecha, hora, cupo) VALUES (?, ?, ?, ?, ?, ?);";
+                ps = conn.prepareStatement(sql);
+                ps.setInt(1, evento.getId());
+                ps.setString(2, evento.getTitulo());
+                ps.setString(3, evento.getExpositor());
+                ps.setString(4, evento.getFecha());
+                ps.setString(5, evento.getHoras());
+                ps.setInt(6, evento.getCupos());
+                ps.executeUpdate();
+            }
+            else{
+                // Edición de registro
+                String sql = "UPDATE seminarios SET titulo=?, expositor=?, fecha=?, hora=?, cupo=? WHERE id=?;";
+                ps = conn.prepareStatement(sql);
+                ps.setString(1, evento.getTitulo());
+                ps.setString(2, evento.getExpositor());
+                ps.setString(3, evento.getFecha());
+                ps.setString(4, evento.getHoras());
+                ps.setString(5, (evento.getCupos()+""));
+                ps.setString(6, (evento.getId()+""));
+                ps.executeUpdate();
+            }
+            canal.cerrarconexion();
+            response.sendRedirect("MainController");
+        } catch (SQLException ex) {
+            System.out.println("Error en SQL " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Returns a short description of the servlet.
+     *
+     * @return a String containing servlet description
+     */
+    @Override
+    public String getServletInfo() {
+        return "Short description";
+    }// </editor-fold>
+
+}
